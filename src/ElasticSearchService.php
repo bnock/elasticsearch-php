@@ -2,12 +2,15 @@
 
 namespace BNock\ElasticsearchPHP;
 
-use App\Factories\ElasticSearchFactory;
+use BNock\ElasticsearchPHP\Credentials\Basic;
+use BNock\ElasticsearchPHP\Credentials\ElasticCloud;
 use BNock\ElasticsearchPHP\Exceptions\ElasticsearchException;
 use BNock\ElasticsearchPHP\Models\Aggregation;
 use BNock\ElasticsearchPHP\Models\Bucket;
 use BNock\ElasticsearchPHP\Models\ScrollResult;
 use BNock\ElasticsearchPHP\Models\SearchResult;
+use Elastic\Elasticsearch\ClientBuilder;
+use Elastic\Elasticsearch\ClientInterface;
 use Elastic\Elasticsearch\Exception\AuthenticationException;
 use Elastic\Elasticsearch\Exception\ClientResponseException;
 use Elastic\Elasticsearch\Exception\MissingParameterException;
@@ -17,13 +20,39 @@ use Illuminate\Support\Collection;
 
 class ElasticSearchService
 {
+    protected ?ClientInterface $client = null;
+
+    /**
+     * Constructor.
+     *
+     * @param ElasticCloud|Basic $credential
+     * @param string|null $caBundlePath
+     * @throws AuthenticationException
+     */
+    public function __construct(ElasticCloud|Basic $credential, string $caBundlePath = null)
+    {
+        $builder = match ($credential::class) {
+            ElasticCloud::class => ClientBuilder::create()
+                ->setElasticCloudId($credential->getCloudId())
+                ->setApiKey($credential->getApiKey()),
+            Basic::class => ClientBuilder::create()
+                ->setHosts($credential->getHosts()->all())
+                ->setBasicAuthentication($credential->getUsername(), $credential->getPassword()),
+        };
+
+        if (!empty($caBundlePath)) {
+            $builder->setCABundle($caBundlePath);
+        }
+
+        $this->client = $builder->build();
+    }
+
     /**
      * Create an index with mappings.
      *
      * @param string $name
      * @param array $mappings
      * @return void
-     * @throws AuthenticationException
      * @throws ElasticsearchException
      * @throws ClientResponseException
      * @throws MissingParameterException
@@ -31,7 +60,7 @@ class ElasticSearchService
      */
     public function createIndex(string $name, array $mappings): void
     {
-        $response = ElasticSearchFactory::getClient()->indices()->create([
+        $response = $this->client->indices()->create([
             'index' => $name,
             'body' => [
                 'mappings' => [
@@ -50,7 +79,6 @@ class ElasticSearchService
      *
      * @param string $name
      * @return void
-     * @throws AuthenticationException
      * @throws ClientResponseException
      * @throws ElasticsearchException
      * @throws MissingParameterException
@@ -58,7 +86,7 @@ class ElasticSearchService
      */
     public function removeIndex(string $name): void
     {
-        $response = ElasticSearchFactory::getClient()->indices()->delete([
+        $response = $this->client->indices()->delete([
             'index' => $name,
         ]);
 
@@ -84,7 +112,7 @@ class ElasticSearchService
         $method = $isUpdate ? 'update' : 'index';
         $successMethod = $isUpdate ? 'isUpdated' : 'isIndexed';
 
-        $response = ElasticSearchFactory::getClient()->$method([
+        $response = $this->client->$method([
             'index' => $name,
             'id' => $id,
             'body' => $isUpdate ? (['doc' => $body]) : $body,
@@ -107,7 +135,6 @@ class ElasticSearchService
      * @param string $id
      * @param array $body
      * @return void
-     * @throws AuthenticationException
      * @throws ClientResponseException
      * @throws ElasticsearchException
      * @throws MissingParameterException
@@ -115,7 +142,7 @@ class ElasticSearchService
      */
     public function upsert(string $name, string $id, array $body): void
     {
-        $response = ElasticSearchFactory::getClient()->update([
+        $response = $this->client->update([
             'index' => $name,
             'id' => $id,
             'body' => [
@@ -135,7 +162,6 @@ class ElasticSearchService
      * @param string $name
      * @param string $id
      * @return void
-     * @throws AuthenticationException
      * @throws ClientResponseException
      * @throws ElasticsearchException
      * @throws MissingParameterException
@@ -143,7 +169,7 @@ class ElasticSearchService
      */
     public function remove(string $name, string $id): void
     {
-        $response = ElasticSearchFactory::getClient()->delete([
+        $response = $this->client->delete([
             'index' => $name,
             'id' => $id,
         ]);
@@ -159,14 +185,13 @@ class ElasticSearchService
      * @param string $indexName
      * @param SearchBuilder $builder
      * @return SearchResult
-     * @throws AuthenticationException
      * @throws ClientResponseException
      * @throws ElasticsearchException
      * @throws ServerResponseException
      */
     public function search(string $indexName, SearchBuilder $builder): SearchResult
     {
-        $response = ElasticSearchFactory::getClient()->search([
+        $response = $this->client->search([
             'index' => $indexName,
             'body' => $builder->toElasticQuery(),
             'timeout' => '3s',
@@ -184,7 +209,6 @@ class ElasticSearchService
      * @param int $ttlMinutes
      * @param string|null $scrollId
      * @return ScrollResult
-     * @throws AuthenticationException
      * @throws ClientResponseException
      * @throws ServerResponseException
      * @throws ElasticsearchException
@@ -201,12 +225,12 @@ class ElasticSearchService
         }
 
         if (!empty($scrollId)) {
-            $response = ElasticSearchFactory::getClient()->scroll([
+            $response = $this->client->scroll([
                 'scroll_id' => $scrollId,
                 'scroll' => $ttlMinutes . 'm',
             ]);
         } else {
-            $response = ElasticSearchFactory::getClient()->search([
+            $response = $this->client->search([
                 'index' => $indexName,
                 'scroll' => $ttlMinutes . 'm',
                 'body' => [
@@ -225,13 +249,12 @@ class ElasticSearchService
      *
      * @param string $scrollId
      * @return void
-     * @throws AuthenticationException
      * @throws ClientResponseException
      * @throws ServerResponseException
      */
     public function clearScroll(string $scrollId): void
     {
-        ElasticSearchFactory::getClient()->clearScroll(['scroll_id' => $scrollId]);
+        $this->client->clearScroll(['scroll_id' => $scrollId]);
     }
 
     /**
