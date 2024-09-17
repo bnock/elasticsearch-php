@@ -54,7 +54,7 @@ class FieldValueFactorFunction extends AbstractFunction
             ],
         ];
 
-        if (!empty($this->missing)) {
+        if (!is_null($this->missing)) {
             $query['field_value_factor']['missing'] = $this->missing;
         }
 
