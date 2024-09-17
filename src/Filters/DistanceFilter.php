@@ -2,6 +2,8 @@
 
 namespace BNock\ElasticsearchPHP\Filters;
 
+use BNock\ElasticsearchPHP\Enumerations\DistanceUnit;
+
 class DistanceFilter extends AbstractFilter
 {
     /**
@@ -11,7 +13,7 @@ class DistanceFilter extends AbstractFilter
      * @param float $latitude
      * @param float $longitude
      * @param float $distance
-     * @param string $unit
+     * @param DistanceUnit $unit
      * @return DistanceFilter
      */
     public static function create(
@@ -19,7 +21,7 @@ class DistanceFilter extends AbstractFilter
         float $latitude,
         float $longitude,
         float $distance,
-        string $unit = 'mi',
+        DistanceUnit $unit = DistanceUnit::Meter,
     ): DistanceFilter {
         return new static($fieldName, $latitude, $longitude, $distance, $unit);
     }
@@ -31,14 +33,14 @@ class DistanceFilter extends AbstractFilter
      * @param float $latitude
      * @param float $longitude
      * @param float $distance
-     * @param string $unit
+     * @param DistanceUnit $unit
      */
     public function __construct(
         string $fieldName,
         protected float $latitude,
         protected float $longitude,
         protected float $distance,
-        protected string $unit = 'mi',
+        protected DistanceUnit $unit = DistanceUnit::Meter,
     ) {
         parent::__construct($fieldName);
     }
@@ -50,7 +52,7 @@ class DistanceFilter extends AbstractFilter
     {
         return [
             'geo_distance' => [
-                'distance' => $this->distance . $this->unit,
+                'distance' => $this->distance . $this->unit->value,
                 $this->fieldName => [
                     'lat' => $this->latitude,
                     'lon' => $this->longitude,
