@@ -3,6 +3,8 @@
 namespace BNock\ElasticsearchPHP\Models;
 
 use BNock\ElasticsearchPHP\Enumerations\GeoShapeType;
+use BNock\ElasticsearchPHP\Exceptions\ElasticsearchException;
+use Illuminate\Support\Collection;
 
 class GeoShape
 {
@@ -10,10 +12,14 @@ class GeoShape
      * Constructor.
      *
      * @param GeoShapeType $type
-     * @param array $coordinates
+     * @param Collection $coordinates
+     * @throws ElasticsearchException
      */
-    public function __construct(protected GeoShapeType $type, protected array $coordinates)
+    public function __construct(protected GeoShapeType $type, protected Collection $coordinates)
     {
+        if ($this->coordinates->isEmpty()) {
+            throw new ElasticsearchException('Coordinates must not be empty');
+        }
     }
 
     /**
@@ -25,9 +31,9 @@ class GeoShape
     }
 
     /**
-     * @return array
+     * @return Collection
      */
-    public function getCoordinates(): array
+    public function getCoordinates(): Collection
     {
         return $this->coordinates;
     }

@@ -48,11 +48,11 @@ class GeoShapeFilter extends AbstractFilter
                 $this->fieldName => [
                     'shape' => [
                         'type' => $this->shape->getType()->value,
-                        'coordinates' => $this->shape->getCoordinates(),
+                        'coordinates' => $this->shape->getCoordinates()->toArray(),
                     ],
                     'relation' => $this->relation->value,
-                ]
-            ]
+                ],
+            ],
         ];
     }
 }
