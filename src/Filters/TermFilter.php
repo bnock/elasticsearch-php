@@ -2,6 +2,8 @@
 
 namespace BNock\ElasticsearchPHP\Filters;
 
+use BNock\ElasticsearchPHP\Exceptions\ElasticsearchException;
+
 class TermFilter extends AbstractFilter
 {
     /**
@@ -21,10 +23,15 @@ class TermFilter extends AbstractFilter
      *
      * @param string $fieldName
      * @param mixed $value
+     * @throws ElasticsearchException
      */
     public function __construct(string $fieldName, protected mixed $value)
     {
         parent::__construct($fieldName);
+
+        if (is_null($this->value)) {
+            throw new ElasticsearchException('Value must not be null');
+        }
     }
 
     /**

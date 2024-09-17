@@ -47,6 +47,8 @@ class RangeFilter extends AbstractFilter
         protected RangeRelation $relation = RangeRelation::Intersects,
     ) {
         parent::__construct($fieldName);
+
+        // TODO: Perhaps add validation of congruent low/high data types and enforce low <= high
     }
 
     /**

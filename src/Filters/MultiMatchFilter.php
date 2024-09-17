@@ -5,7 +5,7 @@ namespace BNock\ElasticsearchPHP\Filters;
 use BNock\ElasticsearchPHP\Contracts\QueryElement;
 use BNock\ElasticsearchPHP\Enumerations\MultiMatchOperator;
 use BNock\ElasticsearchPHP\Enumerations\MultiMatchType;
-use Exception;
+use BNock\ElasticsearchPHP\Exceptions\ElasticsearchException;
 use Illuminate\Support\Collection;
 
 class MultiMatchFilter implements QueryElement
@@ -27,12 +27,11 @@ class MultiMatchFilter implements QueryElement
         protected ?MultiMatchOperator $operator = null,
         protected float $tieBreaker = 0,
     ) {
+        if (!empty($this->tieBreaker) && $this->tieBreaker < 0 || $this->tieBreaker > 1) {
+            throw new ElasticsearchException(sprintf('Invalid tie_breaker value: %f', $this->tieBreaker));
+        }
     }
 
-    /**
-     * @inheritDoc
-     * @throws Exception
-     */
     public function toElasticQuery(): array
     {
         $query = [
@@ -40,7 +39,7 @@ class MultiMatchFilter implements QueryElement
                 'query' => $this->query,
                 'fields' => $this->fieldNames->toArray(),
                 'type' => $this->type->value,
-            ]
+            ],
         ];
 
         if (!empty($this->operator)) {
@@ -48,10 +47,6 @@ class MultiMatchFilter implements QueryElement
         }
 
         if (!empty($this->tieBreaker)) {
-            if ($this->tieBreaker < 0 || $this->tieBreaker > 1) {
-                throw new Exception(sprintf('Invalid tie_breaker value: %f', $this->tieBreaker));
-            }
-
             $query['multi_match']['tie_breaker'] = $this->tieBreaker;
         }
 
